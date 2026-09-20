@@ -61,6 +61,7 @@
         </div>
       </div>
       <div class="lg:w-3/4 space-y-4">
+        <WavelengthPalette />
         <div class="bg-slate-800 rounded-lg p-4 border border-slate-700">
           <h3 class="text-sm font-bold text-slate-400 mb-3">干涉/衍射图样</h3>
           <canvas ref="patternRef" class="w-full rounded" style="height: 200px; background: black;"></canvas>
@@ -81,6 +82,8 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useOpticsStore } from './store/optics'
+import { wavelengthToRGB } from './utils/spectrum'
+import WavelengthPalette from './components/WavelengthPalette.vue'
 
 const store = useOpticsStore()
 const patternRef = ref<HTMLCanvasElement | null>(null)
@@ -92,17 +95,6 @@ const experiments = [
   { id: 'single', name: '单缝衍射 (Fraunhofer)' },
   { id: 'newton', name: '牛顿环干涉' },
 ]
-
-function wavelengthToRGB(nm: number): [number, number, number] {
-  let r = 0, g = 0, b = 0
-  if (nm >= 380 && nm < 440) { r = -(nm - 440) / 60; b = 1.0 }
-  else if (nm >= 440 && nm < 490) { g = (nm - 440) / 50; b = 1.0 }
-  else if (nm >= 490 && nm < 510) { g = 1.0; b = -(nm - 510) / 20 }
-  else if (nm >= 510 && nm < 580) { r = (nm - 510) / 70; g = 1.0 }
-  else if (nm >= 580 && nm < 645) { r = 1.0; g = -(nm - 645) / 65 }
-  else if (nm >= 645 && nm <= 780) { r = 1.0 }
-  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)]
-}
 
 function drawPattern() {
   const canvas = patternRef.value
