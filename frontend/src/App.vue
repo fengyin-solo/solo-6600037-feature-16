@@ -37,6 +37,7 @@
             <input type="range" min="100" max="2000" step="50" v-model.number="store.params.screenDistance" @input="store.compute" class="w-full accent-orange-500" />
           </div>
         </div>
+        <WavelengthColorPanel />
         <div class="bg-slate-800 rounded-lg p-4 border border-slate-700 text-sm">
           <h3 class="text-sm font-bold text-slate-400 mb-3">理论公式</h3>
           <div class="space-y-2 text-xs text-slate-400">
@@ -81,6 +82,8 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useOpticsStore } from './store/optics'
+import WavelengthColorPanel from './components/WavelengthColorPanel.vue'
+import { SAFE_COLOR, rgbCss, wavelengthToRGB } from './utils/wavelength'
 
 const store = useOpticsStore()
 const patternRef = ref<HTMLCanvasElement | null>(null)
@@ -93,27 +96,30 @@ const experiments = [
   { id: 'newton', name: '牛顿环干涉' },
 ]
 
-function wavelengthToRGB(nm: number): [number, number, number] {
-  let r = 0, g = 0, b = 0
-  if (nm >= 380 && nm < 440) { r = -(nm - 440) / 60; b = 1.0 }
-  else if (nm >= 440 && nm < 490) { g = (nm - 440) / 50; b = 1.0 }
-  else if (nm >= 490 && nm < 510) { g = 1.0; b = -(nm - 510) / 20 }
-  else if (nm >= 510 && nm < 580) { r = (nm - 510) / 70; g = 1.0 }
-  else if (nm >= 580 && nm < 645) { r = 1.0; g = -(nm - 645) / 65 }
-  else if (nm >= 645 && nm <= 780) { r = 1.0 }
-  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)]
+/** 空数据/映射失败时以安全色在画布上绘制占位提示，不触碰任何计算结果 */
+function drawEmptyHint(canvas: HTMLCanvasElement, bg: string) {
+  canvas.width = canvas.clientWidth
+  canvas.height = 200
+  const ctx = canvas.getContext('2d')!
+  ctx.fillStyle = bg
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.fillStyle = rgbCss(SAFE_COLOR)
+  ctx.font = '12px monospace'
+  ctx.textAlign = 'center'
+  ctx.fillText('暂无数据（安全色占位）', canvas.width / 2, canvas.height / 2)
 }
 
 function drawPattern() {
   const canvas = patternRef.value
-  if (!canvas || !store.intensityData.length) return
+  if (!canvas) return
+  if (!store.intensityData.length) return drawEmptyHint(canvas, 'black')
   canvas.width = canvas.clientWidth
   canvas.height = 200
   const ctx = canvas.getContext('2d')!
   const W = canvas.width, H = canvas.height
   ctx.fillStyle = 'black'
   ctx.fillRect(0, 0, W, H)
-  const [r, g, b] = wavelengthToRGB(store.params.wavelength)
+  const { r, g, b } = wavelengthToRGB(store.params.wavelength)
   const data = store.intensityData
   for (let x = 0; x < W; x++) {
     const idx = Math.round(x / W * (data.length - 1))
@@ -126,14 +132,15 @@ function drawPattern() {
 
 function drawIntensity() {
   const canvas = intensityRef.value
-  if (!canvas || !store.intensityData.length) return
+  if (!canvas) return
+  if (!store.intensityData.length) return drawEmptyHint(canvas, '#0f172a')
   canvas.width = canvas.clientWidth
   canvas.height = 200
   const ctx = canvas.getContext('2d')!
   const W = canvas.width, H = canvas.height
   ctx.fillStyle = '#0f172a'
   ctx.fillRect(0, 0, W, H)
-  const [r, g, b] = wavelengthToRGB(store.params.wavelength)
+  const { r, g, b } = wavelengthToRGB(store.params.wavelength)
   const data = store.intensityData
   ctx.beginPath()
   ctx.strokeStyle = `rgb(${r},${g},${b})`
@@ -158,12 +165,13 @@ function drawIntensity() {
 
 function drawHeatmap() {
   const canvas = heatmapRef.value
-  if (!canvas || !store.intensityData.length) return
+  if (!canvas) return
+  if (!store.intensityData.length) return drawEmptyHint(canvas, 'black')
   canvas.width = canvas.clientWidth
   canvas.height = 200
   const ctx = canvas.getContext('2d')!
   const W = canvas.width, H = canvas.height
-  const [r, g, b] = wavelengthToRGB(store.params.wavelength)
+  const { r, g, b } = wavelengthToRGB(store.params.wavelength)
   const data = store.intensityData
   const imgData = ctx.createImageData(W, H)
   for (let x = 0; x < W; x++) {
